@@ -43,7 +43,7 @@ const data = {
 };
 
 // ── Replace with your Render backend URL ──────────────────────────────────────
-const BACKEND_URL = 'https://YOUR_RENDER_APP.onrender.com/save';
+const BACKEND_URL = 'https://l2info.onrender.com/save';
 
 let userGrades = {
     ACAD: { s1: {}, s2: {} },
