@@ -9,18 +9,25 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const MONGO_URI   = process.env.mongodb;
 const DB_NAME     = 'L2info_calc';
 const COLLECTION  = 'L2info_calc';
 const COUNTER_COL = 'counters';
 
 let db;
 
+// Use MONGODB_URI (uppercase) and provide a fallback check
+const MONGO_URI = process.env.MONGODB_URI;
+
 async function connectDB() {
+    if (!MONGO_URI) {
+        console.error("ERROR: MONGODB_URI is not defined in environment variables.");
+        process.exit(1); // Stop the app with an error instead of crashing later
+    }
     const client = await MongoClient.connect(MONGO_URI);
     db = client.db(DB_NAME);
     console.log('Connected to MongoDB');
 }
+
 
 // Atomically increment and return the next id
 async function getNextId() {
