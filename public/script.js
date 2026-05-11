@@ -42,7 +42,6 @@ const data = {
     }
 };
 
-// ── Replace with your Render backend URL ──────────────────────────────────────
 const BACKEND_URL = 'https://l2info.onrender.com/save';
 
 let userGrades = {
@@ -54,46 +53,62 @@ const streamSelect = document.getElementById('stream-select');
 const s1Tbody      = document.getElementById('s1-tbody');
 const s2Tbody      = document.getElementById('s2-tbody');
 
-// ── Build document from current state ────────────────────────────────────────
-// Reads module names directly from DOM, empty fields = 0
+// ── Build document logic ─────────────────────────────────────────────────────
 function buildDocument(stream) {
-    const doc = {};
+    const doc = {
+        stream: stream,
+        timestamp: new Date().toISOString()
+    };
+    
     for (const sem of ['s1', 's2']) {
-        const tbody  = sem === 's1' ? s1Tbody : s2Tbody;
-        const rows   = Array.from(tbody.querySelectorAll('tr'));
         const grades = userGrades[stream][sem];
         const mods   = data[stream][sem];
 
-        rows.forEach((tr, index) => {
-            const moduleName = tr.cells[0].textContent.trim();
+        mods.forEach((mod, index) => {
             const g    = grades[index] || {};
             const exam = parseFloat(g.exam) || 0;
             const td   = parseFloat(g.td)   || 0;
             const tp   = parseFloat(g.tp)   || 0;
 
-            const avg = mods[index].hasTP
+            const avg = mod.hasTP
                 ? (0.2 * tp) + (0.2 * td) + (0.6 * exam)
                 : (0.4 * td) + (0.6 * exam);
 
-            doc[moduleName] = parseFloat(avg.toFixed(2));
+            doc[mod.name] = parseFloat(avg.toFixed(2));
         });
     }
     return doc;
 }
 
-// ── Silent save on disconnect ─────────────────────────────────────────────────
-window.addEventListener('beforeunload', () => {
-    const stream  = streamSelect.value;
-    const payload = JSON.stringify(buildDocument(stream));
+// ── Optimized Save on Exit ───────────────────────────────────────────────────
+const performSave = () => {
+    const stream = streamSelect.value;
+    const payload = buildDocument(stream);
+    
+    // 1. Try sendBeacon first (Most reliable for exit events)
+    if (navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        navigator.sendBeacon(BACKEND_URL, blob);
+    } else {
+        // 2. Fallback to fetch with keepalive
+        fetch(BACKEND_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            keepalive: true
+        }).catch(() => {});
+    }
+};
 
-    // keepalive: true ensures the request completes even as the page unloads
-    fetch(BACKEND_URL, {
-        method:    'POST',
-        headers:   { 'Content-Type': 'application/json' },
-        body:      payload,
-        keepalive: true
-    }).catch(() => {});
+// Handle mobile and modern desktop (Triggered when user switches tabs or closes app)
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        performSave();
+    }
 });
+
+// Fallback for older browsers
+window.addEventListener('pagehide', performSave);
 
 // ── Core rendering & calculation ──────────────────────────────────────────────
 function init() {
@@ -217,3 +232,4 @@ function updateSemesterUI(semester, result) {
 }
 
 init();
+
