@@ -2,11 +2,14 @@ const express = require('express');
 const { MongoClient } = require('mongodb');
 const cors = require('cors');
 
+const path = require('path');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-const MONGO_URI   = process.env.MONGO_URI;       // set in Render environment variables
+const MONGO_URI   = process.env.mongodb;
 const DB_NAME     = 'L2info_calc';
 const COLLECTION  = 'L2info_calc';
 const COUNTER_COL = 'counters';
